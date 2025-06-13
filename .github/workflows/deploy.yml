@@ -38,7 +38,7 @@ jobs:
       
     - name: Fix base path for GitHub Pages
       run: |
-        sed -i 's/<base href="\/" \/>/<base href="\/ismauideaddead.com\/" \/>/g' ./publish/wwwroot/index.html
+        sed -i 's/<base href="\/" \/>/<base href="\/ismauideaddead.net\/" \/>/g' ./publish/wwwroot/index.html
         
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
