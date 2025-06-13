@@ -42,7 +42,7 @@
                     @if (siteStatus.DataStreams.Any())
                     {
                         <div class="data-streams">
-                            <h3>Data Streams Status</h3>
+                            <h3>Discovered URLs Status</h3>
                             @foreach (var stream in siteStatus.DataStreams)
                             {
                                 <div class="stream-status @(stream.IsHealthy ? "healthy" : "unhealthy")">
@@ -88,15 +88,6 @@
     private SiteStatus? siteStatus;
     private bool isLoading = true;
 
-    // Define data streams that ismauidead.net might be monitoring
-    private readonly Dictionary<string, string> dataStreamUrls = new()
-    {
-        { "GitHub MAUI Repo", "https://api.github.com/repos/dotnet/maui" },
-        { "NuGet MAUI Package", "https://api.nuget.org/v3-flatcontainer/microsoft.maui.controls/index.json" },
-        { "Microsoft Learn MAUI", "https://docs.microsoft.com/en-us/dotnet/maui/" },
-        { ".NET Release API", "https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app/index.json" }
-    };
-
     protected override async Task OnInitializedAsync()
     {
         await CheckStatus();
@@ -109,7 +100,7 @@
 
         try
         {
-            siteStatus = await StatusService.CheckSiteWithDataStreamsAsync("https://ismauidead.net", dataStreamUrls);
+            siteStatus = await StatusService.CheckSiteWithDiscoveredUrlsAsync("https://ismauidead.net");
         }
         catch (Exception ex)
         {

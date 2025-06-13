@@ -1,4 +1,5 @@
 using System.Net;
+using HtmlAgilityPack;
 
 namespace IsMauiDeadDead.Services;
 
@@ -6,6 +7,7 @@ public interface IStatusService
 {
     Task<SiteStatus> CheckSiteStatusAsync(string url);
     Task<SiteStatus> CheckSiteWithDataStreamsAsync(string mainUrl, Dictionary<string, string> dataStreamUrls);
+    Task<SiteStatus> CheckSiteWithDiscoveredUrlsAsync(string mainUrl);
 }
 
 public class StatusService : IStatusService
@@ -88,6 +90,142 @@ public class StatusService : IStatusService
             DataStreams = dataStreams,
             OverallStatus = overallStatus
         };
+    }
+
+    public async Task<SiteStatus> CheckSiteWithDiscoveredUrlsAsync(string mainUrl)
+    {
+        var mainStatus = await CheckSiteStatusAsync(mainUrl);
+        var dataStreams = new List<EndpointStatus>();
+        
+        // If main site is offline, return offline status immediately
+        if (!mainStatus.IsOnline)
+        {
+            return new SiteStatus
+            {
+                IsOnline = false,
+                StatusCode = mainStatus.StatusCode,
+                ResponseTime = mainStatus.ResponseTime,
+                LastChecked = mainStatus.LastChecked,
+                ErrorMessage = mainStatus.ErrorMessage,
+                DataStreams = dataStreams,
+                OverallStatus = SiteHealthStatus.OFFLINE
+            };
+        }
+
+        // Get the homepage content and extract URLs
+        var discoveredUrls = await DiscoverUrlsFromHomepageAsync(mainUrl);
+        
+        // Check all discovered URLs in parallel
+        var dataStreamTasks = discoveredUrls.Select(async kvp =>
+        {
+            var startTime = DateTime.UtcNow;
+            try
+            {
+                var response = await _httpClient.GetAsync(kvp.Value);
+                var responseTime = DateTime.UtcNow - startTime;
+                
+                return new EndpointStatus
+                {
+                    Name = kvp.Key,
+                    Url = kvp.Value,
+                    IsHealthy = response.IsSuccessStatusCode,
+                    StatusCode = (int)response.StatusCode,
+                    ResponseTime = responseTime,
+                    ErrorMessage = response.IsSuccessStatusCode ? null : $"HTTP {response.StatusCode}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new EndpointStatus
+                {
+                    Name = kvp.Key,
+                    Url = kvp.Value,
+                    IsHealthy = false,
+                    StatusCode = 0,
+                    ResponseTime = DateTime.UtcNow - startTime,
+                    ErrorMessage = ex.Message.Contains("CORS") || ex.Message.Contains("cors") ? 
+                        "CORS restriction" : 
+                        "Connection error"
+                };
+            }
+        });
+
+        dataStreams = (await Task.WhenAll(dataStreamTasks)).ToList();
+        
+        // Determine overall status
+        var overallStatus = DetermineOverallStatus(mainStatus.IsOnline, dataStreams);
+        
+        return new SiteStatus
+        {
+            IsOnline = mainStatus.IsOnline,
+            StatusCode = mainStatus.StatusCode,
+            ResponseTime = mainStatus.ResponseTime,
+            LastChecked = DateTime.UtcNow,
+            ErrorMessage = overallStatus == SiteHealthStatus.DOWN ? "Some URLs are experiencing issues" : mainStatus.ErrorMessage,
+            DataStreams = dataStreams,
+            OverallStatus = overallStatus
+        };
+    }
+
+    private async Task<Dictionary<string, string>> DiscoverUrlsFromHomepageAsync(string mainUrl)
+    {
+        try
+        {
+            var response = await _httpClient.GetStringAsync(mainUrl);
+            var doc = new HtmlDocument();
+            doc.LoadHtml(response);
+
+            var discoveredUrls = new Dictionary<string, string>();
+
+            // Find all anchor tags with href attributes
+            var anchorNodes = doc.DocumentNode.SelectNodes("//a[@href]");
+            if (anchorNodes != null)
+            {
+                foreach (var anchor in anchorNodes)
+                {
+                    var href = anchor.GetAttributeValue("href", "");
+                    var linkText = anchor.InnerText?.Trim() ?? "";
+
+                    if (string.IsNullOrEmpty(href) || string.IsNullOrEmpty(linkText))
+                        continue;
+
+                    // Convert relative URLs to absolute URLs
+                    if (Uri.TryCreate(new Uri(mainUrl), href, out var absoluteUri))
+                    {
+                        var absoluteUrl = absoluteUri.ToString();
+                        
+                        // Filter out internal anchors, mailto, tel, javascript, etc.
+                        if (absoluteUrl.StartsWith("http://") || absoluteUrl.StartsWith("https://"))
+                        {
+                            // Skip the main site URL itself to avoid redundancy
+                            if (!absoluteUrl.Equals(mainUrl, StringComparison.OrdinalIgnoreCase) && 
+                                !absoluteUrl.Equals(mainUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Use link text as name, but truncate if too long
+                                var name = linkText.Length > 50 ? linkText.Substring(0, 47) + "..." : linkText;
+                                
+                                // Avoid duplicate names by appending a counter
+                                var uniqueName = name;
+                                int counter = 1;
+                                while (discoveredUrls.ContainsKey(uniqueName))
+                                {
+                                    uniqueName = $"{name} ({counter++})";
+                                }
+                                
+                                discoveredUrls[uniqueName] = absoluteUrl;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return discoveredUrls;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error discovering URLs from homepage: {ex.Message}");
+            return new Dictionary<string, string>();
+        }
     }
 
     private static SiteHealthStatus DetermineOverallStatus(bool mainSiteOnline, List<EndpointStatus> dataStreams)
