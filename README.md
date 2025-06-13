@@ -1,13 +1,13 @@
-# ismauideaddead.com
-A tracking site for the ismauidead.com site
+# ismauideaddead.net
+A tracking site for the ismauidead.net site
 
-This is a simple Blazor WebAssembly application that monitors the status of [ismauidead.com](https://ismauidead.com) and reports whether the site is up or down.
+This is a simple Blazor WebAssembly application that monitors the status of [ismauidead.net](https://ismauidead.net) and reports whether the site is up or down.
 
 ## Features
 
-- **Real-time Status Checking**: Monitors ismauidead.com and displays current status
+- **Real-time Status Checking**: Monitors ismauidead.net and displays current status
 - **Modern UI**: Clean, responsive interface with loading states
-- **Direct Link**: Quick access to visit ismauidead.com
+- **Direct Link**: Quick access to visit ismauidead.net
 - **Client-side Only**: No server required - runs entirely in the browser
 - **GitHub Pages Deployment**: Automatically deployed via GitHub Actions
 
