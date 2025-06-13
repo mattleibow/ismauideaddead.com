@@ -1,0 +1,96 @@
+@page "/"
+@using IsMauiDeadDead.Services
+@inject IStatusService StatusService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Is MAUI Dead Dead?</PageTitle>
+
+<div class="status-container">
+    <div class="header">
+        <h1>Is MAUI Dead Dead?</h1>
+        <p class="subtitle">Monitoring the status of <a href="https://ismauidead.com" target="_blank" rel="noopener noreferrer">ismauidead.com</a></p>
+    </div>
+
+    <div class="status-card">
+        @if (isLoading)
+        {
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Checking status...</p>
+            </div>
+        }
+        else if (siteStatus != null)
+        {
+            <div class="status-indicator @(siteStatus.IsOnline ? "online" : "offline")">
+                <div class="status-icon">
+                    @if (siteStatus.IsOnline)
+                    {
+                        <span>✓</span>
+                    }
+                    else
+                    {
+                        <span>✗</span>
+                    }
+                </div>
+                <div class="status-text">
+                    <h2>@(siteStatus.IsOnline ? "Site is UP" : "Site is DOWN")</h2>
+                    <p>Status Code: @siteStatus.StatusCode</p>
+                    <p>Last Checked: @siteStatus.LastChecked.ToString("HH:mm:ss UTC")</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="error">
+                <p>Unable to check site status</p>
+            </div>
+        }
+    </div>
+
+    <div class="actions">
+        <button class="refresh-btn" @onclick="CheckStatus" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span>Checking...</span>
+            }
+            else
+            {
+                <span>Check Again</span>
+            }
+        </button>
+        <a href="https://ismauidead.com" target="_blank" rel="noopener noreferrer" class="visit-btn">
+            Visit ismauidead.com
+        </a>
+    </div>
+</div>
+
+@code {
+    private SiteStatus? siteStatus;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckStatus();
+    }
+
+    private async Task CheckStatus()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            siteStatus = await StatusService.CheckSiteStatusAsync("https://ismauidead.com");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking status: {ex.Message}");
+            siteStatus = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}
