@@ -161,7 +161,7 @@ public class StatusService : IStatusService
             StatusCode = mainStatus.StatusCode,
             ResponseTime = mainStatus.ResponseTime,
             LastChecked = DateTime.UtcNow,
-            ErrorMessage = overallStatus == SiteHealthStatus.DOWN ? "Some URLs are experiencing issues" : mainStatus.ErrorMessage,
+            ErrorMessage = overallStatus == SiteHealthStatus.DOWN ? "Some JSON data streams are experiencing issues" : mainStatus.ErrorMessage,
             DataStreams = dataStreams,
             OverallStatus = overallStatus
         };
@@ -177,32 +177,42 @@ public class StatusService : IStatusService
 
             var discoveredUrls = new Dictionary<string, string>();
 
-            // Find all anchor tags with href attributes
-            var anchorNodes = doc.DocumentNode.SelectNodes("//a[@href]");
-            if (anchorNodes != null)
+            // Find all script tags and scan their content for .json URLs
+            var scriptNodes = doc.DocumentNode.SelectNodes("//script");
+            if (scriptNodes != null)
             {
-                foreach (var anchor in anchorNodes)
+                foreach (var script in scriptNodes)
                 {
-                    var href = anchor.GetAttributeValue("href", "");
-                    var linkText = anchor.InnerText?.Trim() ?? "";
-
-                    if (string.IsNullOrEmpty(href) || string.IsNullOrEmpty(linkText))
+                    var scriptContent = script.InnerText ?? script.InnerHtml ?? "";
+                    
+                    if (string.IsNullOrEmpty(scriptContent))
                         continue;
 
-                    // Convert relative URLs to absolute URLs
-                    if (Uri.TryCreate(new Uri(mainUrl), href, out var absoluteUri))
+                    // Look for .json URLs in the script content using regex
+                    var jsonUrlMatches = System.Text.RegularExpressions.Regex.Matches(
+                        scriptContent, 
+                        @"(?:""|\')([^""\']*\.json[^""\']*?)(?:""|\')", 
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    foreach (System.Text.RegularExpressions.Match match in jsonUrlMatches)
                     {
-                        var absoluteUrl = absoluteUri.ToString();
+                        var jsonUrl = match.Groups[1].Value;
                         
-                        // Filter out internal anchors, mailto, tel, javascript, etc.
-                        if (absoluteUrl.StartsWith("http://") || absoluteUrl.StartsWith("https://"))
+                        if (string.IsNullOrEmpty(jsonUrl))
+                            continue;
+
+                        // Convert relative URLs to absolute URLs
+                        if (Uri.TryCreate(new Uri(mainUrl), jsonUrl, out var absoluteUri))
                         {
-                            // Skip the main site URL itself to avoid redundancy
-                            if (!absoluteUrl.Equals(mainUrl, StringComparison.OrdinalIgnoreCase) && 
-                                !absoluteUrl.Equals(mainUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                            var absoluteUrl = absoluteUri.ToString();
+                            
+                            // Only include HTTP/HTTPS URLs
+                            if (absoluteUrl.StartsWith("http://") || absoluteUrl.StartsWith("https://"))
                             {
-                                // Use link text as name, but truncate if too long
-                                var name = linkText.Length > 50 ? linkText.Substring(0, 47) + "..." : linkText;
+                                // Extract a meaningful name from the URL
+                                var uri = new Uri(absoluteUrl);
+                                var fileName = System.IO.Path.GetFileNameWithoutExtension(uri.LocalPath);
+                                var name = !string.IsNullOrEmpty(fileName) ? fileName : "JSON Data";
                                 
                                 // Avoid duplicate names by appending a counter
                                 var uniqueName = name;
@@ -223,7 +233,7 @@ public class StatusService : IStatusService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error discovering URLs from homepage: {ex.Message}");
+            Console.WriteLine($"Error discovering JSON URLs from homepage: {ex.Message}");
             return new Dictionary<string, string>();
         }
     }

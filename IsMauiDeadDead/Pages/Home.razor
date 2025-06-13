@@ -42,7 +42,7 @@
                     @if (siteStatus.DataStreams.Any())
                     {
                         <div class="data-streams">
-                            <h3>Discovered URLs Status</h3>
+                            <h3>JSON Data Streams Status</h3>
                             @foreach (var stream in siteStatus.DataStreams)
                             {
                                 <div class="stream-status @(stream.IsHealthy ? "healthy" : "unhealthy")">
