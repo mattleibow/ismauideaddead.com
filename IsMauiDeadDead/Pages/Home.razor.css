@@ -96,6 +96,11 @@
     color: #666;
 }
 
+.error-message {
+    color: #dc3545 !important;
+    font-weight: 500;
+}
+
 .actions {
     display: flex;
     gap: 1rem;
