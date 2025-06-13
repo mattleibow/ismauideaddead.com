@@ -5,9 +5,7 @@ namespace IsMauiDeadDead.Services;
 
 public interface IStatusService
 {
-    Task<SiteStatus> CheckSiteStatusAsync(string url);
-    Task<SiteStatus> CheckSiteWithDataStreamsAsync(string mainUrl, Dictionary<string, string> dataStreamUrls);
-    Task<SiteStatus> CheckSiteWithDiscoveredUrlsAsync(string mainUrl);
+    Task<SiteStatus> CheckSiteStatusAsync(string mainUrl);
 }
 
 public class StatusService : IStatusService
@@ -20,9 +18,9 @@ public class StatusService : IStatusService
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
     }
 
-    public async Task<SiteStatus> CheckSiteWithDataStreamsAsync(string mainUrl, Dictionary<string, string> dataStreamUrls)
+    public async Task<SiteStatus> CheckSiteStatusAsync(string mainUrl)
     {
-        var mainStatus = await CheckSiteStatusAsync(mainUrl);
+        var mainStatus = await CheckMainSiteStatusAsync(mainUrl);
         var dataStreams = new List<EndpointStatus>();
         
         // If main site is offline, return offline status immediately
@@ -40,79 +38,7 @@ public class StatusService : IStatusService
             };
         }
 
-        // Check all data streams in parallel
-        var dataStreamTasks = dataStreamUrls.Select(async kvp =>
-        {
-            var startTime = DateTime.UtcNow;
-            try
-            {
-                var response = await _httpClient.GetAsync(kvp.Value);
-                var responseTime = DateTime.UtcNow - startTime;
-                
-                return new EndpointStatus
-                {
-                    Name = kvp.Key,
-                    Url = kvp.Value,
-                    IsHealthy = response.IsSuccessStatusCode,
-                    StatusCode = (int)response.StatusCode,
-                    ResponseTime = responseTime,
-                    ErrorMessage = response.IsSuccessStatusCode ? null : $"HTTP {response.StatusCode}"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new EndpointStatus
-                {
-                    Name = kvp.Key,
-                    Url = kvp.Value,
-                    IsHealthy = false,
-                    StatusCode = 0,
-                    ResponseTime = DateTime.UtcNow - startTime,
-                    ErrorMessage = ex.Message.Contains("CORS") || ex.Message.Contains("cors") ? 
-                        "CORS restriction" : 
-                        "Connection error"
-                };
-            }
-        });
-
-        dataStreams = (await Task.WhenAll(dataStreamTasks)).ToList();
-        
-        // Determine overall status
-        var overallStatus = DetermineOverallStatus(mainStatus.IsOnline, dataStreams);
-        
-        return new SiteStatus
-        {
-            IsOnline = mainStatus.IsOnline,
-            StatusCode = mainStatus.StatusCode,
-            ResponseTime = mainStatus.ResponseTime,
-            LastChecked = DateTime.UtcNow,
-            ErrorMessage = overallStatus == SiteHealthStatus.DOWN ? "Some data streams are experiencing issues" : mainStatus.ErrorMessage,
-            DataStreams = dataStreams,
-            OverallStatus = overallStatus
-        };
-    }
-
-    public async Task<SiteStatus> CheckSiteWithDiscoveredUrlsAsync(string mainUrl)
-    {
-        var mainStatus = await CheckSiteStatusAsync(mainUrl);
-        var dataStreams = new List<EndpointStatus>();
-        
-        // If main site is offline, return offline status immediately
-        if (!mainStatus.IsOnline)
-        {
-            return new SiteStatus
-            {
-                IsOnline = false,
-                StatusCode = mainStatus.StatusCode,
-                ResponseTime = mainStatus.ResponseTime,
-                LastChecked = mainStatus.LastChecked,
-                ErrorMessage = mainStatus.ErrorMessage,
-                DataStreams = dataStreams,
-                OverallStatus = SiteHealthStatus.OFFLINE
-            };
-        }
-
-        // Get the homepage content and extract URLs
+        // Get the homepage content and extract JSON URLs
         var discoveredUrls = await DiscoverUrlsFromHomepageAsync(mainUrl);
         
         // Check all discovered URLs in parallel
@@ -249,7 +175,7 @@ public class StatusService : IStatusService
         return SiteHealthStatus.DOWN;
     }
 
-    public async Task<SiteStatus> CheckSiteStatusAsync(string url)
+    private async Task<SiteStatus> CheckMainSiteStatusAsync(string url)
     {
         var startTime = DateTime.UtcNow;
         

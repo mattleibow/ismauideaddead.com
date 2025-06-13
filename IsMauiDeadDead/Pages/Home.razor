@@ -100,7 +100,7 @@
 
         try
         {
-            siteStatus = await StatusService.CheckSiteWithDiscoveredUrlsAsync("https://ismauidead.net");
+            siteStatus = await StatusService.CheckSiteStatusAsync("https://ismauidead.net");
         }
         catch (Exception ex)
         {
