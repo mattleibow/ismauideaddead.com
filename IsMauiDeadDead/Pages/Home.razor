@@ -1,5 +1,6 @@
 @page "/"
 @using IsMauiDeadDead.Services
+@using Microsoft.AspNetCore.Components
 @inject IStatusService StatusService
 @inject IJSRuntime JSRuntime
 
@@ -21,22 +22,15 @@
         }
         else if (siteStatus != null)
         {
-            <div class="status-indicator @(siteStatus.IsOnline ? "online" : "offline")">
+            <div class="status-indicator @GetStatusClass(siteStatus.OverallStatus)">
                 <div class="status-icon">
-                    @if (siteStatus.IsOnline)
-                    {
-                        <span>✓</span>
-                    }
-                    else
-                    {
-                        <span>✗</span>
-                    }
+                    @GetStatusIcon(siteStatus.OverallStatus)
                 </div>
                 <div class="status-text">
-                    <h2>@(siteStatus.IsOnline ? "Site is UP" : "Site is DOWN")</h2>
+                    <h2>@GetStatusText(siteStatus.OverallStatus)</h2>
                     @if (siteStatus.StatusCode > 0)
                     {
-                        <p>Status Code: @siteStatus.StatusCode</p>
+                        <p>Main Site Status Code: @siteStatus.StatusCode</p>
                     }
                     @if (!string.IsNullOrEmpty(siteStatus.ErrorMessage))
                     {
@@ -44,6 +38,24 @@
                     }
                     <p>Response Time: @siteStatus.ResponseTime.TotalMilliseconds.ToString("F0")ms</p>
                     <p>Last Checked: @siteStatus.LastChecked.ToString("HH:mm:ss UTC")</p>
+                    
+                    @if (siteStatus.DataStreams.Any())
+                    {
+                        <div class="data-streams">
+                            <h3>JSON Data Streams Status</h3>
+                            @foreach (var stream in siteStatus.DataStreams)
+                            {
+                                <div class="stream-status @(stream.IsHealthy ? "healthy" : "unhealthy")">
+                                    <span class="stream-name">@stream.Name</span>
+                                    <span class="stream-indicator">@(stream.IsHealthy ? "✓" : "✗")</span>
+                                    @if (!stream.IsHealthy && !string.IsNullOrEmpty(stream.ErrorMessage))
+                                    {
+                                        <small class="stream-error">@stream.ErrorMessage</small>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -101,4 +113,28 @@
             StateHasChanged();
         }
     }
+
+    private string GetStatusClass(SiteHealthStatus status) => status switch
+    {
+        SiteHealthStatus.UP => "online",
+        SiteHealthStatus.DOWN => "degraded",
+        SiteHealthStatus.OFFLINE => "offline",
+        _ => "offline"
+    };
+
+    private string GetStatusText(SiteHealthStatus status) => status switch
+    {
+        SiteHealthStatus.UP => "Site is UP",
+        SiteHealthStatus.DOWN => "Site is DOWN",
+        SiteHealthStatus.OFFLINE => "Site is OFFLINE",
+        _ => "Unknown Status"
+    };
+
+    private MarkupString GetStatusIcon(SiteHealthStatus status) => status switch
+    {
+        SiteHealthStatus.UP => new MarkupString("<span>✓</span>"),
+        SiteHealthStatus.DOWN => new MarkupString("<span>⚠</span>"),
+        SiteHealthStatus.OFFLINE => new MarkupString("<span>✗</span>"),
+        _ => new MarkupString("<span>?</span>")
+    };
 }

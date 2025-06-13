@@ -91,6 +91,70 @@
     box-shadow: 0 8px 20px rgba(255, 68, 68, 0.3);
 }
 
+.status-indicator.degraded .status-icon {
+    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    box-shadow: 0 8px 20px rgba(255, 165, 0, 0.3);
+}
+
+.data-streams {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.data-streams h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.stream-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border-left: 4px solid transparent;
+}
+
+.stream-status.healthy {
+    border-left-color: #28a745;
+    background: #f8fff9;
+}
+
+.stream-status.unhealthy {
+    border-left-color: #dc3545;
+    background: #fff8f8;
+}
+
+.stream-name {
+    font-weight: 500;
+    flex-grow: 1;
+}
+
+.stream-indicator {
+    font-weight: bold;
+    margin-left: 0.5rem;
+}
+
+.stream-status.healthy .stream-indicator {
+    color: #28a745;
+}
+
+.stream-status.unhealthy .stream-indicator {
+    color: #dc3545;
+}
+
+.stream-error {
+    display: block;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    font-size: 0.8rem;
+    width: 100%;
+}
+
 .status-text {
     text-align: left;
 }
