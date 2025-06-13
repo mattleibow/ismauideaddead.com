@@ -13,7 +13,7 @@ This is a simple Blazor WebAssembly application that monitors the status of [ism
 
 ## Technical Details
 
-- Built with .NET 8 Blazor WebAssembly
+- Built with .NET 9 Blazor WebAssembly
 - No server-side components required
 - Responsive design with CSS animations
 - CORS-aware status checking with graceful error handling
