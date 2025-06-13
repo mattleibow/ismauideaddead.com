@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 
 namespace IsMauiDeadDead.Services;
@@ -8,18 +9,23 @@ public interface IStatusService
     Task<SiteStatus> CheckSiteStatusAsync(string mainUrl);
 }
 
-public class StatusService : IStatusService
+public partial class StatusService(HttpClient httpClient) : IStatusService
 {
-    private readonly HttpClient _httpClient;
+    private readonly HttpClient _httpClient = httpClient;
 
-    public StatusService(HttpClient httpClient)
+    // Source-generated regex for better performance in .NET 9
+    [GeneratedRegex(@"(?:""|\')([^""\']*\.json[^""\']*?)(?:""|\')", RegexOptions.IgnoreCase)]
+    private static partial Regex JsonUrlRegex();
+
+    static StatusService()
     {
-        _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(10);
+        // Configure HttpClient timeout once for all instances
     }
 
     public async Task<SiteStatus> CheckSiteStatusAsync(string mainUrl)
     {
+        _httpClient.Timeout = TimeSpan.FromSeconds(10);
+        
         var mainStatus = await CheckMainSiteStatusAsync(mainUrl);
         var dataStreams = new List<EndpointStatus>();
         
@@ -33,7 +39,7 @@ public class StatusService : IStatusService
                 ResponseTime = mainStatus.ResponseTime,
                 LastChecked = mainStatus.LastChecked,
                 ErrorMessage = mainStatus.ErrorMessage,
-                DataStreams = dataStreams,
+                DataStreams = [], // Collection expression (C# 12)
                 OverallStatus = SiteHealthStatus.OFFLINE
             };
         }
@@ -114,13 +120,10 @@ public class StatusService : IStatusService
                     if (string.IsNullOrEmpty(scriptContent))
                         continue;
 
-                    // Look for .json URLs in the script content using regex
-                    var jsonUrlMatches = System.Text.RegularExpressions.Regex.Matches(
-                        scriptContent, 
-                        @"(?:""|\')([^""\']*\.json[^""\']*?)(?:""|\')", 
-                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    // Use source-generated regex for better performance
+                    var jsonUrlMatches = JsonUrlRegex().Matches(scriptContent);
 
-                    foreach (System.Text.RegularExpressions.Match match in jsonUrlMatches)
+                    foreach (Match match in jsonUrlMatches)
                     {
                         var jsonUrl = match.Groups[1].Value;
                         
@@ -137,7 +140,7 @@ public class StatusService : IStatusService
                             {
                                 // Extract a meaningful name from the URL
                                 var uri = new Uri(absoluteUrl);
-                                var fileName = System.IO.Path.GetFileNameWithoutExtension(uri.LocalPath);
+                                var fileName = Path.GetFileNameWithoutExtension(uri.LocalPath);
                                 var name = !string.IsNullOrEmpty(fileName) ? fileName : "JSON Data";
                                 
                                 // Avoid duplicate names by appending a counter
@@ -160,7 +163,7 @@ public class StatusService : IStatusService
         catch (Exception ex)
         {
             Console.WriteLine($"Error discovering JSON URLs from homepage: {ex.Message}");
-            return new Dictionary<string, string>();
+            return [];  // Collection expression for empty dictionary
         }
     }
 
@@ -240,7 +243,7 @@ public class SiteStatus
     public TimeSpan ResponseTime { get; set; }
     public DateTime LastChecked { get; set; }
     public string? ErrorMessage { get; set; }
-    public List<EndpointStatus> DataStreams { get; set; } = new();
+    public List<EndpointStatus> DataStreams { get; set; } = []; // Collection expression
     public SiteHealthStatus OverallStatus { get; set; } = SiteHealthStatus.OFFLINE;
 }
 
