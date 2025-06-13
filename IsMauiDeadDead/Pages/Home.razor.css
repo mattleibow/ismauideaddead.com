@@ -1,0 +1,150 @@
+.status-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.subtitle a {
+    color: #007acc;
+    text-decoration: none;
+}
+
+.subtitle a:hover {
+    text-decoration: underline;
+}
+
+.status-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin: 2rem 0;
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007acc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.status-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.status-indicator.online .status-icon {
+    background-color: #28a745;
+}
+
+.status-indicator.offline .status-icon {
+    background-color: #dc3545;
+}
+
+.status-text {
+    text-align: left;
+}
+
+.status-text h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.status-text p {
+    margin: 0.25rem 0;
+    color: #666;
+}
+
+.error-message {
+    color: #dc3545 !important;
+    font-weight: 500;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.refresh-btn, .visit-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.refresh-btn {
+    background-color: #007acc;
+    color: white;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.visit-btn {
+    background-color: #6c757d;
+    color: white;
+    display: inline-block;
+}
+
+.visit-btn:hover {
+    background-color: #545b62;
+    color: white;
+    text-decoration: none;
+}
+
+.error {
+    color: #dc3545;
+}
